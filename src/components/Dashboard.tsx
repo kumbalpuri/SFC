@@ -3,11 +3,12 @@ import { Kaizen } from '../types';
 import { BarChart, Clock, CheckCircle, TrendingUp, IndianRupee, Activity, Users, Award, HelpCircle, ChevronDown, ChevronRight } from 'lucide-react';
 import { formatIndianRupees, formatIndianRupeesCompact } from '../utils';
 import ExecutiveAnalyticsBoard from './ExecutiveAnalyticsBoard';
+import EmployeeKaizenChart from './EmployeeKaizenChart';
 
 interface DashboardProps {
   kaizens: Kaizen[];
   onSelectKaizen: (k: Kaizen) => void;
-  onNavigateToTab: (tab: 'form' | 'committee' | 'list' | 'cft-awards' | 'process-flowchart') => void;
+  onNavigateToTab: (tab: 'form' | 'committee' | 'list' | 'cft-awards' | 'process-flowchart' | 'gamification') => void;
 }
 
 export default function Dashboard({ kaizens, onSelectKaizen, onNavigateToTab }: DashboardProps) {
@@ -68,6 +69,12 @@ export default function Dashboard({ kaizens, onSelectKaizen, onNavigateToTab }: 
           </div>
           <div className="flex flex-wrap gap-3">
             <button
+              onClick={() => onNavigateToTab('gamification')}
+              className="px-5 py-3 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black rounded-xl text-xs transition-all shadow-md flex items-center space-x-1.5 cursor-pointer border border-amber-300 ring-2 ring-amber-400/20"
+            >
+              <span>🎮 Gamification & Density</span>
+            </button>
+            <button
               onClick={() => onNavigateToTab('process-flowchart')}
               className="px-5 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs transition-all shadow-md flex items-center space-x-1.5 cursor-pointer border border-indigo-400"
             >
@@ -96,7 +103,10 @@ export default function Dashboard({ kaizens, onSelectKaizen, onNavigateToTab }: 
       </div>
 
       {/* Executive Analytics Dashboard (Matching User Uploaded Benchmark Charts) */}
-      <ExecutiveAnalyticsBoard />
+      <ExecutiveAnalyticsBoard kaizens={kaizens} />
+
+      {/* Employee-wise Number of Kaizen Graphs & Leaderboard */}
+      <EmployeeKaizenChart kaizens={kaizens} onSelectKaizen={onSelectKaizen} />
 
       {/* Bento Grid Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

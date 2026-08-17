@@ -168,6 +168,8 @@ export interface PpsrReport {
   discoveredBy?: string;
   repeatCase?: 'yes' | 'no';
   sketchPhoto?: string;
+  initialEvidenceType?: 'data' | 'photo' | 'both';
+  initialDefectTrendData?: Array<{ date: string; defectsCount: number; stage?: string }>;
 
   factsAnalysis?: {
     whatIs: string; whatIsNot: string;
@@ -193,6 +195,9 @@ export interface PpsrReport {
     measurement: string[];
   };
 
+  causeLocalizationApproach?: 'fishbone' | 'psq' | 'both';
+  psqTreeData?: PsqTreeData;
+
   fiveWhysList?: {
     column1: string[];
     column2: string[];
@@ -209,6 +214,8 @@ export interface PpsrReport {
 
   effectivenessEvidence?: string;
   effectivenessChartData?: Array<{ name: string; value: number }>;
+  evidenceType?: 'data' | 'photo' | 'both';
+  defectTrendData?: Array<{ date: string; defectsCount: number; stage?: string }>;
 
   standardizationList?: Array<{
     no: number;
@@ -288,5 +295,85 @@ export interface PpsrMeetingLog {
   createdAt: string;
 }
 
+export type PsqNodeStatus = 'active' | 'eliminated' | 'target' | 'pending';
+
+export interface PsqTreeNode {
+  id: string;
+  title: string;
+  label?: string; // e.g. "ΔM", "ΔP", "Parts", "Assembly process"
+  status: PsqNodeStatus; // 'eliminated' -> shows diagonal strike-through slash & shaded box; 'target' -> highlighted Red X; 'active' -> active branch
+  explanation?: string; // reason for elimination or observation
+  children?: PsqTreeNode[];
+}
+
+export interface PsqChildPartSwapItem {
+  id: string;
+  partName: string;
+  wowInBobValue: string;
+  wowInBobResult: 'BOB' | 'WOW' | '';
+  bobInWowValue: string;
+  bobInWowResult: 'BOB' | 'WOW' | '';
+  isDefective: boolean;
+  status: 'eliminated' | 'target' | 'pending';
+  notes?: string;
+}
+
+export interface PsqComponentSearchData {
+  productName?: string;
+  productNumber?: string;
+  customerName?: string;
+  testResultSpecification?: string;
+
+  // Stage 0: Measurement System (ΔM vs ΔP)
+  stage0: {
+    bobOriginal: string;
+    wowOriginal: string;
+    bobRepeat1: string;
+    wowRepeat1: string;
+    bobRepeat2: string;
+    wowRepeat2: string;
+    bobRepeat3: string;
+    wowRepeat3: string;
+    measurementGood: boolean;
+    deltaMStatus: 'eliminated' | 'target' | 'pending';
+    deltaPStatus: 'active' | 'eliminated' | 'pending';
+    notes?: string;
+  };
+
+  // Stage 1: Disassembly & Re-assembly of BOB & WOW parts (Process vs Product)
+  stage1: {
+    bobRepeat1: string;
+    wowRepeat1: string;
+    bobRepeat2: string;
+    wowRepeat2: string;
+    bobRepeat3: string;
+    wowRepeat3: string;
+    processGood: boolean;
+    assemblyProcessStatus: 'eliminated' | 'target' | 'pending';
+    partsStatus: 'active' | 'eliminated' | 'pending';
+    notes?: string;
+  };
+
+  // Stage 2: Swapping Individual Child Parts in BOB & WOW Product
+  stage2: {
+    childParts: PsqChildPartSwapItem[];
+    contributingPartName?: string;
+    notes?: string;
+  };
+
+  activeStage?: 0 | 1 | 2;
+}
+
+export interface PsqTreeData {
+  projectStatement?: string;
+  bigXTarget?: string;
+  ftqRejectionRate?: string;
+  estimatedCost?: string;
+  treeType?: 'psq_standard' | 'delta_m_delta_p' | 'swap_analysis';
+  rootNodes?: PsqTreeNode[];
+  swapData?: PsqComponentSearchData;
+}
+
 export type UserPersona = 'operator' | 'committee' | 'manager';
+
 

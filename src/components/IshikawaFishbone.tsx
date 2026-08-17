@@ -172,24 +172,28 @@ export default function IshikawaFishbone({ ishikawa, problemTitle }: IshikawaFis
         >
           {/* Defs for gradients & shadow filters */}
           <defs>
-            <linearGradient id="backboneGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="#94a3b8" />
-              <stop offset="60%" stopColor="#4f46e5" />
-              <stop offset="100%" stopColor="#ef4444" />
+            <linearGradient id="backboneGradient" gradientUnits="userSpaceOnUse" x1="25" y1="200" x2="655" y2="200">
+              <stop offset="0%" stopColor="#4f46e5" />
+              <stop offset="50%" stopColor="#8b5cf6" />
+              <stop offset="100%" stopColor="#dc2626" />
             </linearGradient>
+
+            <marker id="spineArrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+              <path d="M 0 1 L 10 5 L 0 9 z" fill="#dc2626" />
+            </marker>
             
             <filter id="glowFilter" x="-20%" y="-20%" width="140%" height="140%">
               <feGaussianBlur stdDeviation="6" result="blur" />
               <feComposite in="SourceGraphic" in2="blur" operator="over" />
             </filter>
             
-            <filter id="softShadow" x="-10%" y="-10%" width="120%" height="120%">
+            <filter id="softShadow" filterUnits="userSpaceOnUse" x="-50" y="-50" width="900" height="500">
               <feDropShadow dx="1" dy="2" stdDeviation="3" floodColor="#000000" floodOpacity="0.1" />
             </filter>
           </defs>
 
           {/* Fish Tail (Left hand side) */}
-          <g transform="translate(0,0)" filter="url(#softShadow)">
+          <g transform="translate(0,0)">
             <path
               d="M 50,200 L 12,130 L 25,200 L 12,270 Z"
               fill="#f8fafc"
@@ -206,16 +210,38 @@ export default function IshikawaFishbone({ ishikawa, problemTitle }: IshikawaFis
             />
           </g>
 
-          {/* Spine (Central Backbone) */}
+          {/* Solid Backing Center Line (Guarantees visible line regardless of gradient capabilities) */}
           <line
-            x1="45"
+            x1="25"
             y1="200"
-            x2="650"
+            x2="655"
+            y2="200"
+            stroke="#475569"
+            strokeWidth="5"
+            strokeLinecap="round"
+          />
+
+          {/* Continuous Central Middle Spine Line (Tail to Head) with Gradient */}
+          <line
+            x1="25"
+            y1="200"
+            x2="655"
             y2="200"
             stroke="url(#backboneGradient)"
-            strokeWidth="4"
+            strokeWidth="5"
             strokeLinecap="round"
-            filter="url(#softShadow)"
+            markerEnd="url(#spineArrow)"
+          />
+
+          {/* Inner dashed continuation line right into NOK Effect box */}
+          <line
+            x1="655"
+            y1="200"
+            x2="685"
+            y2="200"
+            stroke="#dc2626"
+            strokeWidth="2.5"
+            strokeDasharray="4 2"
           />
 
           {/* Rib bone connections onto central spine */}

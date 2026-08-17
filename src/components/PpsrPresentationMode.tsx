@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import IshikawaFishbone from './IshikawaFishbone';
+import { PsqEliminationTree, DEFAULT_PSQ_TREE_DATA } from './PsqEliminationTree';
 
 interface PpsrPresentationModeProps {
   report: PpsrReport;
@@ -34,7 +35,7 @@ interface PpsrPresentationModeProps {
 const STEPS = [
   { id: 1, title: '1. Problem Definition & Facts', subtitle: '5W2H Problem Statement & Initial Evidence' },
   { id: 2, title: '2. Emergency Containment', subtitle: 'Immediate Actions & Non-Conformity Controls' },
-  { id: 3, title: '3. Root Cause Analysis', subtitle: 'Ishikawa 6M Diagram & 5-Why Method' },
+  { id: 3, title: '3. Cause Localization & Root Cause', subtitle: 'Ishikawa 6M Fishbone / PSQ Elimination Tree & 5-Why' },
   { id: 4, title: '4. Corrective Actions (PCA)', subtitle: 'Permanent Solution & Countermeasure Roadmap' },
   { id: 5, title: '5. Effectiveness & Financials', subtitle: 'Rejection Trend & Cost Savings Validation' },
   { id: 6, title: '6. Standardization & MF', subtitle: 'SOP/WI Updates & Minifactory Deployment' },
@@ -59,6 +60,9 @@ export default function PpsrPresentationMode({
 
   // Committee decision state
   const [decision, setDecision] = useState<'Approved' | 'Re-work Needed' | 'In Review'>(report.committeeDecision || 'In Review');
+  const [slide3Approach, setSlide3Approach] = useState<'both' | 'fishbone' | 'psq'>(
+    report.causeLocalizationApproach || (report.psqTreeData ? 'both' : 'fishbone')
+  );
 
   // Handle keyboard navigation
   useEffect(() => {
@@ -155,12 +159,15 @@ export default function PpsrPresentationMode({
   const standardizationList = report.standardizationList || [];
   const readAcrossList = report.readAcrossList || [];
 
-  const chartData = report.effectivenessChartData || [
-    { name: 'Initial', value: report.pctBefore || 8 },
-    { name: 'Containment', value: (report.pctBefore ? report.pctBefore * 0.6 : 4.5) },
-    { name: 'PCA Implemented', value: (report.pctAfter ? report.pctAfter * 1.5 : 1.2) },
-    { name: 'Verified Current', value: report.pctAfter || 0.2 }
-  ];
+  const chartData = report.defectTrendData && report.defectTrendData.length > 0
+    ? report.defectTrendData.map(d => ({ name: d.date, value: d.defectsCount }))
+    : (report.effectivenessChartData || [
+        { name: 'Day 1 (Initial)', value: report.pctBefore || 6.2 },
+        { name: 'Day 2 (Manual)', value: 3.5 },
+        { name: 'Day 3 (Fluid Revert)', value: 1.1 },
+        { name: 'Day 4 (PLC Cycle)', value: 0.3 },
+        { name: 'Day 5 (Current)', value: report.pctAfter || 0.1 }
+      ]);
 
   const totalFeedbackCount = (report.presentationFeedback || []).length;
   const unresolvedFeedbackCount = (report.presentationFeedback || []).filter(f => !f.resolved).length;
@@ -562,6 +569,49 @@ export default function PpsrPresentationMode({
                 <div className="bg-indigo-50/50 p-5 rounded-xl border border-indigo-100 text-base sm:text-lg font-medium text-slate-900 leading-relaxed">
                   {report.problemStatement || 'No detailed problem statement entered.'}
                 </div>
+
+                {/* Initial Evidence: Baseline Graph & Defect Photo */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                  {/* Option 1: Initial Baseline Chart */}
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-2">
+                    <span className="text-xs font-black uppercase tracking-wider text-emerald-800 font-mono block">
+                      📈 Option 1: Initial Defect Baseline Chart
+                    </span>
+                    {report.initialDefectTrendData && report.initialDefectTrendData.length > 0 ? (
+                      <div className="h-44 bg-white p-2 rounded-xl border border-slate-200">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart data={report.initialDefectTrendData.map(d => ({ name: d.date, value: d.defectsCount }))}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                            <XAxis dataKey="name" stroke="#64748b" fontSize={10} />
+                            <YAxis stroke="#64748b" fontSize={10} />
+                            <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderRadius: '8px', color: '#fff', fontSize: '11px' }} />
+                            <Line type="monotone" dataKey="value" stroke="#059669" strokeWidth={3} dot={{ r: 5, fill: '#059669' }} />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    ) : (
+                      <div className="h-44 bg-white/70 rounded-xl border border-dashed border-slate-300 flex items-center justify-center text-xs text-slate-400 font-mono">
+                        No baseline trend data recorded
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Option 2: Photo Evidence */}
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-2">
+                    <span className="text-xs font-black uppercase tracking-wider text-indigo-800 font-mono block">
+                      📷 Option 2: Defect Photo Evidence
+                    </span>
+                    {report.sketchPhoto ? (
+                      <div className="h-44 bg-white rounded-xl border border-slate-200 overflow-hidden flex items-center justify-center p-2">
+                        <img src={report.sketchPhoto} alt="Defect Evidence" className="max-h-40 object-contain rounded-lg" />
+                      </div>
+                    ) : (
+                      <div className="h-44 bg-white/70 rounded-xl border border-dashed border-slate-300 flex items-center justify-center text-xs text-slate-400 font-mono">
+                        No photo uploaded
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
 
               {/* 5W2H Facts Analysis Matrix (Enlarged) */}
@@ -678,20 +728,84 @@ export default function PpsrPresentationMode({
             </div>
           )}
 
-          {/* SLIDE 3: ROOT CAUSE ANALYSIS (FISHBONE & 5-WHY) */}
+          {/* SLIDE 3: CAUSE LOCALIZATION & ROOT CAUSE ANALYSIS */}
           {currentStep === 3 && (
             <div className="space-y-6 animate-fade-in max-w-6xl mx-auto">
-              {/* Ishikawa Diagram Render */}
-              <div className="bg-white border border-slate-300 rounded-2xl p-6 shadow-sm space-y-4">
-                <h3 className="text-sm font-black uppercase tracking-wider text-indigo-800 font-mono flex items-center space-x-2">
+              {/* Method Switcher Header */}
+              <div className="bg-white border border-slate-300 rounded-2xl p-4 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3">
+                <div className="flex items-center space-x-2">
                   <Compass className="w-5 h-5 text-indigo-600" />
-                  <span>Cause & Effect Diagram (Ishikawa 6M Fishbone)</span>
-                </h3>
-
-                <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 overflow-x-auto">
-                  <IshikawaFishbone ishikawa={ishikawa} problemTitle={report.title} />
+                  <span className="text-sm font-black uppercase tracking-wider text-indigo-900 font-mono">
+                    Cause Localization Methodology
+                  </span>
+                </div>
+                <div className="flex items-center space-x-1.5 bg-slate-100 p-1 rounded-xl">
+                  <button
+                    type="button"
+                    onClick={() => setSlide3Approach('fishbone')}
+                    className={`px-3 py-1 rounded-lg text-xs font-mono font-bold transition cursor-pointer ${
+                      slide3Approach === 'fishbone'
+                        ? 'bg-indigo-600 text-white shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    🐟 Ishikawa (6M)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSlide3Approach('psq')}
+                    className={`px-3 py-1 rounded-lg text-xs font-mono font-bold transition cursor-pointer ${
+                      slide3Approach === 'psq'
+                        ? 'bg-indigo-600 text-white shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    🌳 PSQ Elimination Tree
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSlide3Approach('both')}
+                    className={`px-3 py-1 rounded-lg text-xs font-mono font-bold transition cursor-pointer ${
+                      slide3Approach === 'both'
+                        ? 'bg-indigo-600 text-white shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    🔄 Both Methods
+                  </button>
                 </div>
               </div>
+
+              {/* Ishikawa Diagram Render */}
+              {(slide3Approach === 'fishbone' || slide3Approach === 'both') && (
+                <div className="bg-white border border-slate-300 rounded-2xl p-6 shadow-sm space-y-4">
+                  <h3 className="text-sm font-black uppercase tracking-wider text-indigo-800 font-mono flex items-center space-x-2">
+                    <span className="w-2 h-2 rounded-full bg-indigo-600"></span>
+                    <span>Method A: Cause & Effect Diagram (Ishikawa 6M Fishbone)</span>
+                  </h3>
+
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 overflow-x-auto">
+                    <IshikawaFishbone ishikawa={ishikawa} problemTitle={report.title} />
+                  </div>
+                </div>
+              )}
+
+              {/* PSQ Elimination Tree Render */}
+              {(slide3Approach === 'psq' || slide3Approach === 'both') && (
+                <div className="bg-white border border-slate-300 rounded-2xl p-6 shadow-sm space-y-4">
+                  <h3 className="text-sm font-black uppercase tracking-wider text-indigo-800 font-mono flex items-center space-x-2">
+                    <span className="w-2 h-2 rounded-full bg-emerald-600"></span>
+                    <span>Method B: PSQ Project Definition & Elimination Strategy Tree (Cause Localization)</span>
+                  </h3>
+
+                  <div className="bg-slate-50/50 border border-slate-200 rounded-xl p-4 overflow-x-auto">
+                    <PsqEliminationTree 
+                      data={report.psqTreeData || DEFAULT_PSQ_TREE_DATA}
+                      isEditable={false}
+                    />
+                  </div>
+                </div>
+              )}
 
               {/* 5-Why Drilldown Table */}
               <div className="bg-white border border-slate-300 rounded-2xl p-6 shadow-sm space-y-4">

@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { Kaizen } from '../types';
+import EmployeeKaizenChart from './EmployeeKaizenChart';
 import { 
   TrendingUp, 
   BarChart3, 
@@ -13,7 +15,11 @@ import {
 } from 'lucide-react';
 import { formatIndianRupees } from '../utils';
 
-export default function ExecutiveAnalyticsBoard() {
+interface ExecutiveAnalyticsBoardProps {
+  kaizens?: Kaizen[];
+}
+
+export default function ExecutiveAnalyticsBoard({ kaizens = [] }: ExecutiveAnalyticsBoardProps) {
   // Slicer States
   const [selectedYear, setSelectedYear] = useState<string>('2025');
   const [selectedMonth, setSelectedMonth] = useState<string>('ALL');
@@ -658,6 +664,9 @@ export default function ExecutiveAnalyticsBoard() {
         </div>
 
       </div>
+
+      {/* SECTION 4: EMPLOYEE-WISE KAIZEN SUBMISSION & PARTICIPATION LEADERBOARD */}
+      <EmployeeKaizenChart kaizens={kaizens} darkMode={true} />
 
     </div>
   );

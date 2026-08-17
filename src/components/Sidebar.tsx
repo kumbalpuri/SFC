@@ -22,7 +22,10 @@ import {
   Trophy,
   Award,
   Vote,
-  Workflow
+  Workflow,
+  Crown,
+  Flame,
+  BarChart3
 } from 'lucide-react';
 import { UserPersona } from '../types';
 
@@ -267,6 +270,28 @@ export default function Sidebar({
                 >
                   <UserCheck className="w-3 h-3 shrink-0" />
                   <span>👥 Committee Review</span>
+                </button>
+                <button
+                  onClick={() => selectSubTab('kaizen', 'gamification')}
+                  className={`w-full flex items-center space-x-2 px-2.5 py-1.5 rounded-lg text-left text-[11px] font-semibold transition ${
+                    activeModule === 'kaizen' && activeTab === 'gamification'
+                      ? 'text-amber-400 font-bold bg-slate-900/80 shadow-xs'
+                      : 'text-amber-300/80 hover:text-amber-200 hover:bg-slate-900/40'
+                  }`}
+                >
+                  <Crown className="w-3 h-3 shrink-0 text-amber-400" />
+                  <span>🏆 Gamification & Leaderboard</span>
+                </button>
+                <button
+                  onClick={() => selectSubTab('kaizen', 'gamification')}
+                  className={`w-full flex items-center space-x-2 px-2.5 py-1.5 rounded-lg text-left text-[11px] font-semibold transition ${
+                    activeModule === 'kaizen' && activeTab === 'gamification'
+                      ? 'text-indigo-400 font-bold bg-slate-900/80 shadow-xs'
+                      : 'text-indigo-300/80 hover:text-indigo-200 hover:bg-slate-900/40'
+                  }`}
+                >
+                  <BarChart3 className="w-3 h-3 shrink-0 text-indigo-400" />
+                  <span>📊 Kaizen Density & Shopfloor Culture</span>
                 </button>
                 <button
                   onClick={() => selectSubTab('cft-awards', '')}

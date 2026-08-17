@@ -3,6 +3,7 @@ import { PpsrReport } from '../types';
 import { X, Printer, Compass, CheckCircle2, AlertCircle, Sparkles, HelpCircle, Download, Loader2 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import IshikawaFishbone from './IshikawaFishbone';
+import { PsqEliminationTree, DEFAULT_PSQ_TREE_DATA } from './PsqEliminationTree';
 import { downloadElementAsPdf, triggerA4Print, triggerA3Print } from '../utils/pdfExporter';
 
 interface PpsrSheetInspectProps {
@@ -54,6 +55,9 @@ export default function PpsrSheetInspect({ report, onClose }: PpsrSheetInspectPr
   ];
 
   const [isPdfExporting, setIsPdfExporting] = useState(false);
+  const [activeApproach, setActiveApproach] = useState<'both' | 'fishbone' | 'psq'>(
+    report.causeLocalizationApproach || (report.psqTreeData ? 'both' : 'fishbone')
+  );
 
   const handleDownloadPdf = async () => {
     setIsPdfExporting(true);
@@ -211,21 +215,45 @@ export default function PpsrSheetInspect({ report, onClose }: PpsrSheetInspectPr
                 </div>
               </div>
 
-              {/* Text & Picture layout */}
+              {/* Text & Picture/Chart layout */}
               <div className="grid grid-cols-1 md:grid-cols-12 border-x border-b border-slate-800 divide-y md:divide-y-0 md:divide-x divide-slate-800">
-                <div className="md:col-span-8 p-3 text-xs leading-relaxed space-y-1 bg-white">
+                <div className="md:col-span-6 p-3 text-xs leading-relaxed space-y-1 bg-white">
                   <span className="text-[8px] font-black text-slate-400 uppercase block font-mono">Problem description:</span>
                   <p className="text-slate-700 font-medium whitespace-pre-wrap">{report.problemStatement}</p>
                 </div>
-                <div className="md:col-span-4 p-3 bg-slate-50 flex flex-col justify-between min-h-[140px]">
-                  <span className="text-[8px] font-black text-slate-400 uppercase block font-mono mb-2">Sketch / Photo:</span>
-                  <div className="flex-1 border border-dashed border-slate-300 rounded-xl flex items-center justify-center bg-white p-2">
+
+                {/* Option 1: Initial Baseline Graph */}
+                <div className="md:col-span-3 p-2 bg-slate-50 flex flex-col justify-between min-h-[140px]">
+                  <span className="text-[8px] font-black text-slate-500 uppercase block font-mono mb-1">Option 1: Initial Baseline Graph</span>
+                  {report.initialDefectTrendData && report.initialDefectTrendData.length > 0 ? (
+                    <div className="h-28 bg-white p-1 rounded border border-slate-200">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={report.initialDefectTrendData.map(d => ({ name: d.date, value: d.defectsCount }))} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                          <XAxis dataKey="name" tick={{ fontSize: 7, fill: '#64748b' }} />
+                          <YAxis tick={{ fontSize: 7, fill: '#64748b' }} />
+                          <Tooltip contentStyle={{ fontSize: '8px', padding: '2px 4px' }} />
+                          <Line type="monotone" dataKey="value" stroke="#059669" strokeWidth={2} dot={{ r: 3 }} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  ) : (
+                    <div className="h-28 bg-white/60 border border-dashed border-slate-300 rounded flex items-center justify-center text-center p-2 text-[9px] text-slate-400 font-mono">
+                      No baseline trend data
+                    </div>
+                  )}
+                </div>
+
+                {/* Option 2: Defect Photo */}
+                <div className="md:col-span-3 p-2 bg-slate-50 flex flex-col justify-between min-h-[140px]">
+                  <span className="text-[8px] font-black text-slate-500 uppercase block font-mono mb-1">Option 2: Defect Photo</span>
+                  <div className="flex-1 border border-dashed border-slate-300 rounded-xl flex items-center justify-center bg-white p-1">
                     {report.sketchPhoto ? (
-                      <img src={report.sketchPhoto} alt="Problem Evidence" className="max-h-28 object-contain rounded" referrerPolicy="no-referrer" />
+                      <img src={report.sketchPhoto} alt="Problem Evidence" className="max-h-24 object-contain rounded" referrerPolicy="no-referrer" />
                     ) : (
-                      <div className="text-center p-3 text-slate-400">
-                        <Compass className="w-8 h-8 text-slate-300 mx-auto animate-pulse" />
-                        <span className="text-[9px] font-mono uppercase block mt-1">Defect Diagram</span>
+                      <div className="text-center p-2 text-slate-400">
+                        <Compass className="w-6 h-6 text-slate-300 mx-auto animate-pulse" />
+                        <span className="text-[8px] font-mono uppercase block mt-1">Defect Diagram</span>
                       </div>
                     )}
                   </div>
@@ -321,14 +349,75 @@ export default function PpsrSheetInspect({ report, onClose }: PpsrSheetInspectPr
             {/* Page break marker for print */}
             <div className="print:page-break-after-always" />
 
-            {/* Section 4a: Cause Localization (Ishikawa) */}
+            {/* Section 4a: Cause Localization (Fishbone & PSQ Approach) */}
             <div className="space-y-2 pt-6 print:pt-0">
-              <h3 className="text-xs font-black text-slate-900 uppercase tracking-widest font-mono border-b border-slate-800 pb-1 flex items-center justify-between">
-                <span>4a Cause localization (Ishikawa Fishbone)</span>
-                <span className="text-[10px] font-normal text-slate-400 lowercase italic">BE Step 4a</span>
-              </h3>
+              <div className="flex flex-wrap items-center justify-between border-b border-slate-800 pb-1 gap-2">
+                <div className="flex items-center space-x-2">
+                  <h3 className="text-xs font-black text-slate-900 uppercase tracking-widest font-mono">
+                    4a Cause localization (Fishbone / PSQ Elimination Tree)
+                  </h3>
+                  <span className="text-[10px] font-normal text-slate-400 lowercase italic">BE Step 4a</span>
+                </div>
 
-              <IshikawaFishbone ishikawa={ishikawa} problemTitle={report.title} />
+                {/* Print-hidden approach view toggle */}
+                <div className="flex items-center space-x-1 print:hidden">
+                  <button
+                    type="button"
+                    onClick={() => setActiveApproach('fishbone')}
+                    className={`px-2 py-0.5 rounded text-[9px] font-mono font-bold transition ${
+                      activeApproach === 'fishbone' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    Ishikawa Fishbone
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveApproach('psq')}
+                    className={`px-2 py-0.5 rounded text-[9px] font-mono font-bold transition ${
+                      activeApproach === 'psq' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    PSQ Elimination Tree
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveApproach('both')}
+                    className={`px-2 py-0.5 rounded text-[9px] font-mono font-bold transition ${
+                      activeApproach === 'both' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    Both Approaches
+                  </button>
+                </div>
+              </div>
+
+              {/* Ishikawa Fishbone View */}
+              {(activeApproach === 'fishbone' || activeApproach === 'both') && (
+                <div className="space-y-1">
+                  {activeApproach === 'both' && (
+                    <span className="text-[9px] font-black uppercase text-indigo-700 font-mono block">
+                      Approach 1: Ishikawa 6M Cause-and-Effect Skeleton
+                    </span>
+                  )}
+                  <IshikawaFishbone ishikawa={ishikawa} problemTitle={report.title} />
+                </div>
+              )}
+
+              {/* PSQ Project Definition & Elimination Strategy Tree View */}
+              {(activeApproach === 'psq' || activeApproach === 'both') && (
+                <div className="space-y-1 pt-2">
+                  {activeApproach === 'both' && (
+                    <span className="text-[9px] font-black uppercase text-indigo-700 font-mono block">
+                      Approach 2: PSQ Project Definition & Elimination Strategy Tree (Cause Localization)
+                    </span>
+                  )}
+                  <PsqEliminationTree 
+                    data={report.psqTreeData || DEFAULT_PSQ_TREE_DATA}
+                    isEditable={false}
+                    compact={true}
+                  />
+                </div>
+              )}
             </div>
 
             {/* Section 4b: Root Cause Analysis (5 x Why Columns) */}
@@ -442,29 +531,63 @@ export default function PpsrSheetInspect({ report, onClose }: PpsrSheetInspectPr
               </div>
             </div>
 
-            {/* Section 6: Effectiveness */}
+            {/* Section 6: Effectiveness & Evidence Options */}
             <div className="space-y-2">
               <h3 className="text-xs font-black text-slate-900 uppercase tracking-widest font-mono border-b border-slate-800 pb-1 flex items-center justify-between">
-                <span>6 Effectiveness Evidence</span>
+                <span>6 Effectiveness Evidence (Option 1: Data Graph & Option 2: Photo)</span>
                 <span className="text-[10px] font-normal text-slate-400 lowercase italic">BE Step 6</span>
               </h3>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border border-slate-800 p-4">
-                <div className="text-xs space-y-2 leading-relaxed">
-                  <span className="text-[8px] font-black text-slate-400 uppercase block font-mono">Evidence of effectiveness (Audited KPIs):</span>
-                  <p className="text-slate-700 font-medium whitespace-pre-wrap">{report.effectivenessEvidence || report.validationCheck || 'Defect rate monitored continuously post implementation.'}</p>
+                {/* Option 1: Defect Reduction Trend Chart */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[9px] font-black text-indigo-700 uppercase font-mono tracking-wider">
+                      📈 Option 1: Defect Reduction Trend Chart
+                    </span>
+                    <span className="text-[8px] font-mono text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded font-bold border border-emerald-200">
+                      Verified Data
+                    </span>
+                  </div>
+                  <div className="h-44 bg-slate-50 p-2 rounded-xl border border-slate-200">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={report.defectTrendData && report.defectTrendData.length > 0 ? report.defectTrendData.map(d => ({ name: d.date, value: d.defectsCount })) : chartData} margin={{ top: 10, right: 15, left: -15, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                        <XAxis dataKey="name" tick={{ fontSize: 8, fill: '#475569', fontWeight: 600 }} />
+                        <YAxis tick={{ fontSize: 8, fill: '#475569', fontWeight: 600 }} />
+                        <Tooltip contentStyle={{ fontSize: '10px', padding: '4px 8px', borderRadius: '6px', backgroundColor: '#0f172a', color: '#fff' }} />
+                        <Line type="monotone" dataKey="value" stroke="#059669" strokeWidth={3} dot={{ r: 5, fill: '#059669', stroke: '#ffffff', strokeWidth: 1.5 }} activeDot={{ r: 7 }} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <p className="text-[10px] text-slate-600 font-medium leading-relaxed italic border-l-2 border-emerald-500 pl-2">
+                    {report.effectivenessEvidence || report.validationCheck || 'Defect level decreased systematically following permanent corrective action implementation.'}
+                  </p>
                 </div>
-                <div className="h-36 bg-slate-50/50 p-2 rounded-xl border border-slate-200">
-                  <span className="text-[8px] font-black text-slate-400 uppercase block font-mono mb-1">Rework Defect Rate (%) Trend Chart</span>
-                  <ResponsiveContainer width="100%" height="90%">
-                    <LineChart data={chartData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                      <XAxis dataKey="name" tick={{ fontSize: 7, fill: '#64748b' }} />
-                      <YAxis tick={{ fontSize: 7, fill: '#64748b' }} />
-                      <Tooltip contentStyle={{ fontSize: '8px', padding: '2px 4px' }} />
-                      <Line type="monotone" dataKey="value" stroke="#8b5cf6" strokeWidth={2.5} activeDot={{ r: 4 }} />
-                    </LineChart>
-                  </ResponsiveContainer>
+
+                {/* Option 2: Evidence Photo / Visual Link */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[9px] font-black text-indigo-700 uppercase font-mono tracking-wider">
+                      📷 Option 2: Visual Photo Evidence
+                    </span>
+                    <span className="text-[8px] font-mono text-slate-500">
+                      Physical Inspection
+                    </span>
+                  </div>
+                  {report.sketchPhoto ? (
+                    <div className="h-44 rounded-xl border border-slate-200 overflow-hidden bg-slate-100 flex items-center justify-center p-1">
+                      <img src={report.sketchPhoto} alt="Evidence Photo" className="w-full h-full object-contain rounded-lg" />
+                    </div>
+                  ) : (
+                    <div className="h-44 rounded-xl border border-dashed border-slate-300 bg-slate-50/50 flex flex-col items-center justify-center p-4 text-center">
+                      <div className="w-10 h-10 rounded-full bg-indigo-50 text-indigo-500 flex items-center justify-center mb-2">
+                        📷
+                      </div>
+                      <span className="text-[10px] font-bold text-slate-600 font-mono">No Image Uploaded</span>
+                      <p className="text-[9px] text-slate-400 mt-1">Photo upload is optional when Defect Reduction Data chart is provided.</p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

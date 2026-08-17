@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { PpsrReport, Kaizen } from '../types';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import IshikawaFishbone from './IshikawaFishbone';
+import { PsqEliminationTree, DEFAULT_PSQ_TREE_DATA } from './PsqEliminationTree';
+import { PsqTreeData } from '../types';
 import PpsrPresentationMode from './PpsrPresentationMode';
 import CftMonthlyAwards from './CftMonthlyAwards';
 import { 
@@ -37,7 +39,9 @@ import {
   TrendingUp,
   AlertCircle,
   MessageSquare,
-  Tv
+  Tv,
+  Camera,
+  Upload
 } from 'lucide-react';
 import { PpsrMeetingLog } from '../types';
 
@@ -296,6 +300,38 @@ export default function PpsrSystem({
   const [problemStatement, setProblemStatement] = useState('');
   const [sketchPhoto, setSketchPhoto] = useState('');
 
+  // Step 1.1: Initial Evidence Options (Option 1 Data vs Option 2 Photo)
+  const [initialEvidenceType, setInitialEvidenceType] = useState<'data' | 'photo' | 'both'>('data');
+  const [initialDefectTrendData, setInitialDefectTrendData] = useState<Array<{ date: string; defectsCount: number; stage?: string }>>([
+    { date: '13-12-2027', defectsCount: 6.2, stage: 'Initial Baseline' },
+    { date: '14-12-2027', defectsCount: 3.5, stage: 'Observation' },
+    { date: '15-12-2027', defectsCount: 1.1, stage: 'Investigation' },
+    { date: '16-12-2027', defectsCount: 0.3, stage: 'Analysis' },
+    { date: '18-12-2027', defectsCount: 0.1, stage: 'Pre-countermeasure' }
+  ]);
+
+  const handleAddInitialDefectRow = () => {
+    const nextNum = initialDefectTrendData.length + 1;
+    setInitialDefectTrendData(prev => [
+      ...prev,
+      { date: `Day ${nextNum}`, defectsCount: 0, stage: 'Baseline' }
+    ]);
+  };
+
+  const handleUpdateInitialDefectRow = (index: number, field: 'date' | 'defectsCount' | 'stage', val: any) => {
+    setInitialDefectTrendData(prev => {
+      const copy = [...prev];
+      copy[index] = { ...copy[index], [field]: val };
+      return copy;
+    });
+  };
+
+  const handleRemoveInitialDefectRow = (index: number) => {
+    if (initialDefectTrendData.length > 1) {
+      setInitialDefectTrendData(prev => prev.filter((_, i) => i !== index));
+    }
+  };
+
   // Step 2: Facts Analysis
   const [whatIs, setWhatIs] = useState('');
   const [whatIsNot, setWhatIsNot] = useState('');
@@ -315,7 +351,11 @@ export default function PpsrSystem({
     setContainmentActions(prev => [...prev, { action: '', responsible: '', date: new Date().toISOString().split('T')[0], status: 'implemented' }]);
   };
 
-  // Step 4a: Ishikawa
+  // Step 4a: Cause Localization (Fishbone and/or PSQ Elimination Tree)
+  const [causeLocalizationApproach, setCauseLocalizationApproach] = useState<'fishbone' | 'psq' | 'both'>('both');
+  const [psqTreeData, setPsqTreeData] = useState<PsqTreeData>(DEFAULT_PSQ_TREE_DATA);
+
+  // Ishikawa state
   const [ishikawaMan, setIshikawaMan] = useState('');
   const [ishikawaMachine, setIshikawaMachine] = useState('');
   const [ishikawaMaterial, setIshikawaMaterial] = useState('');
@@ -351,8 +391,39 @@ export default function PpsrSystem({
     setCorrectiveActions(prev => [...prev, { measure: '', responsible: '', deadline: new Date().toISOString().split('T')[0], status: 'completed' }]);
   };
 
-  // Step 6: Effectiveness & Standardization
+  // Step 6: Effectiveness & Verification Evidence Options
   const [effectivenessEvidence, setEffectivenessEvidence] = useState('');
+  const [evidenceType, setEvidenceType] = useState<'data' | 'photo' | 'both'>('data');
+  const [defectTrendData, setDefectTrendData] = useState<Array<{ date: string; defectsCount: number; stage?: string }>>([
+    { date: 'Day 1 (Initial)', defectsCount: 6.2, stage: 'Initial Baseline' },
+    { date: 'Day 2 (Manual)', defectsCount: 3.5, stage: 'Manual Jig Adjustment' },
+    { date: 'Day 3 (Fluid Revert)', defectsCount: 1.1, stage: 'Fluid Revert' },
+    { date: 'Day 4 (PLC Cycle)', defectsCount: 0.3, stage: 'PLC Cycle' },
+    { date: 'Day 5 (Current)', defectsCount: 0.1, stage: 'Current Standardized' },
+  ]);
+
+  const handleAddDefectRow = () => {
+    const nextNum = defectTrendData.length + 1;
+    setDefectTrendData(prev => [
+      ...prev,
+      { date: `Day ${nextNum}`, defectsCount: 0, stage: 'Verification' }
+    ]);
+  };
+
+  const handleUpdateDefectRow = (index: number, field: 'date' | 'defectsCount' | 'stage', val: any) => {
+    setDefectTrendData(prev => {
+      const copy = [...prev];
+      copy[index] = { ...copy[index], [field]: val };
+      return copy;
+    });
+  };
+
+  const handleRemoveDefectRow = (index: number) => {
+    if (defectTrendData.length > 1) {
+      setDefectTrendData(prev => prev.filter((_, i) => i !== index));
+    }
+  };
+
   const [standardizationActions, setStandardizationActions] = useState<Array<{measure: string, responsible: string, date: string, status: 'completed'}>>([
     { measure: '', responsible: '', date: new Date().toISOString().split('T')[0], status: 'completed' }
   ]);
@@ -403,6 +474,8 @@ export default function PpsrSystem({
       discoveredBy,
       repeatCase,
       sketchPhoto: sketchPhoto || undefined,
+      initialEvidenceType,
+      initialDefectTrendData,
 
       factsAnalysis: {
         whatIs, whatIsNot,
@@ -424,6 +497,9 @@ export default function PpsrSystem({
         measurement: ishikawaMeasurement ? ishikawaMeasurement.split(',').map(s => s.trim()) : []
       },
 
+      causeLocalizationApproach,
+      psqTreeData,
+
       fiveWhysList: {
         column1: [why1_col1, why2_col1, why3_col1, why4_col1, why5_col1].filter(Boolean),
         column2: [why1_col2, why2_col2, why3_col2, why4_col2, why5_col2].filter(Boolean),
@@ -435,12 +511,12 @@ export default function PpsrSystem({
         .map((ca, i) => ({ no: i + 1, ...ca })),
 
       effectivenessEvidence,
-      effectivenessChartData: [
-        { name: 'Initial', value: parseFloat(amountDefects) || 8 },
-        { name: 'Contain', value: (parseFloat(amountDefects) || 8) * 0.5 },
-        { name: 'Fix', value: (parseFloat(amountDefects) || 8) * 0.15 },
-        { name: 'Verified', value: 0.1 }
-      ],
+      evidenceType,
+      defectTrendData,
+      effectivenessChartData: defectTrendData.map(d => ({
+        name: d.date,
+        value: Number(d.defectsCount) || 0
+      })),
 
       standardizationList: standardizationActions
         .filter(s => s.measure.trim() !== '')
@@ -795,14 +871,48 @@ export default function PpsrSystem({
                     {/* Step 4 */}
                     <div className="border border-slate-100 p-4 rounded-2xl bg-slate-50/40 space-y-4 col-span-1 md:col-span-2">
                       <div className="flex items-center justify-between border-b pb-1">
-                        <span className="text-[10px] font-black text-violet-600 uppercase font-mono">Step 4a & 4b: Ishikawa Cause Localization & 5-Whys</span>
-                        <span className="text-[9px] font-bold font-mono text-indigo-600">REPORTS GENERATED</span>
+                        <span className="text-[10px] font-black text-violet-600 uppercase font-mono">
+                          Step 4a & 4b: Cause Localization (Ishikawa & PSQ Elimination Tree) & 5-Whys
+                        </span>
+                        <div className="flex items-center space-x-1.5">
+                          {selectedReport.causeLocalizationApproach === 'psq' && (
+                            <span className="text-[9px] font-bold font-mono px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-300">
+                              🌳 PSQ TREE
+                            </span>
+                          )}
+                          {selectedReport.causeLocalizationApproach === 'fishbone' && (
+                            <span className="text-[9px] font-bold font-mono px-2 py-0.5 rounded bg-indigo-100 text-indigo-800 border border-indigo-300">
+                              🐟 ISHIKAWA
+                            </span>
+                          )}
+                          {(selectedReport.causeLocalizationApproach === 'both' || (!selectedReport.causeLocalizationApproach && selectedReport.psqTreeData)) && (
+                            <span className="text-[9px] font-bold font-mono px-2 py-0.5 rounded bg-purple-100 text-purple-800 border border-purple-300">
+                              🔄 DUAL APPROACH
+                            </span>
+                          )}
+                        </div>
                       </div>
                       
                       {/* Live Graphical Fishbone Diagram */}
-                      <div className="bg-white rounded-3xl p-1 shadow-sm border border-slate-200 overflow-hidden">
-                        <IshikawaFishbone ishikawa={selectedReport.ishikawa} problemTitle={selectedReport.title} />
-                      </div>
+                      {(!selectedReport.causeLocalizationApproach || selectedReport.causeLocalizationApproach === 'fishbone' || selectedReport.causeLocalizationApproach === 'both') && (
+                        <div className="bg-white rounded-3xl p-1 shadow-sm border border-slate-200 overflow-hidden">
+                          <IshikawaFishbone ishikawa={selectedReport.ishikawa} problemTitle={selectedReport.title} />
+                        </div>
+                      )}
+
+                      {/* PSQ Elimination Tree in Preview */}
+                      {(selectedReport.causeLocalizationApproach === 'psq' || selectedReport.causeLocalizationApproach === 'both' || selectedReport.psqTreeData) && (
+                        <div className="space-y-1">
+                          <span className="text-[10px] font-black uppercase text-emerald-800 font-mono block">
+                            🌳 PSQ Project Definition & Elimination Strategy Tree:
+                          </span>
+                          <PsqEliminationTree 
+                            data={selectedReport.psqTreeData || DEFAULT_PSQ_TREE_DATA}
+                            isEditable={false}
+                            compact={true}
+                          />
+                        </div>
+                      )}
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-[11px] pt-1">
                         <div>
@@ -1175,7 +1285,7 @@ export default function PpsrSystem({
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-[10px] font-bold text-slate-400 uppercase font-mono mb-1">Discovered By</label>
                     <input
@@ -1197,16 +1307,218 @@ export default function PpsrSystem({
                       <option value="yes">Yes, recurring problem</option>
                     </select>
                   </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase font-mono mb-1">Evidence Photo Link (Optional)</label>
-                    <input
-                      type="text"
-                      value={sketchPhoto}
-                      onChange={(e) => setSketchPhoto(e.target.value)}
-                      placeholder="Paste visual image URL"
-                      className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs focus:bg-white focus:outline-none"
-                    />
+                </div>
+
+                {/* Step 1.1: Initial Evidence & Defect Data Options (Option 1: Data Trend Chart & Option 2: Photo Upload) */}
+                <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200 space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-3">
+                    <div>
+                      <h4 className="text-xs font-black text-slate-800 uppercase tracking-widest font-mono flex items-center gap-1.5">
+                        <span>📊 Step 1.1: Initial Problem Evidence Options</span>
+                      </h4>
+                      <p className="text-[10px] text-slate-500 mt-0.5 font-mono">
+                        Choose between entering initial defect trend data (generates initial baseline graph) or uploading photo evidence.
+                      </p>
+                    </div>
+
+                    {/* TWO OPTION TOGGLE */}
+                    <div className="flex bg-white p-1 rounded-xl border border-slate-200 shadow-3xs font-mono text-[10px] font-bold">
+                      <button
+                        type="button"
+                        onClick={() => setInitialEvidenceType('data')}
+                        className={`px-3 py-1.5 rounded-lg transition flex items-center space-x-1.5 ${
+                          initialEvidenceType === 'data'
+                            ? 'bg-emerald-600 text-white shadow-xs font-black'
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        <TrendingDown className="w-3.5 h-3.5" />
+                        <span>Option 1: Data (Date & Defects)</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setInitialEvidenceType('photo')}
+                        className={`px-3 py-1.5 rounded-lg transition flex items-center space-x-1.5 ${
+                          initialEvidenceType === 'photo'
+                            ? 'bg-indigo-600 text-white shadow-xs font-black'
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        <Camera className="w-3.5 h-3.5" />
+                        <span>Option 2: Photo Upload</span>
+                      </button>
+                    </div>
                   </div>
+
+                  {/* OPTION 1: DATA ENTRY FOR INITIAL DEFECT BASELINE TREND CHART */}
+                  {(initialEvidenceType === 'data' || initialEvidenceType === 'both') && (
+                    <div className="space-y-4 bg-white p-4 rounded-xl border border-slate-200 shadow-3xs animate-fade-in">
+                      <div className="flex items-center justify-between border-b pb-2">
+                        <div>
+                          <span className="text-[10px] font-black uppercase text-emerald-700 font-mono tracking-wider flex items-center space-x-1">
+                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                            <span>Option 1: Initial Defect Data Input</span>
+                          </span>
+                          <p className="text-[10px] text-slate-500 mt-0.5">Input dates/days and defect counts. The baseline graph below updates automatically.</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleAddInitialDefectRow}
+                          className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs px-2.5 py-1.5 rounded-lg font-bold font-mono transition border border-emerald-200 flex items-center space-x-1"
+                        >
+                          <span>+ Add Data Point</span>
+                        </button>
+                      </div>
+
+                      {/* Table of Date & Defect Count */}
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left text-xs font-mono">
+                          <thead>
+                            <tr className="bg-slate-50 text-slate-500 border-b border-slate-200">
+                              <th className="p-2 w-8">#</th>
+                              <th className="p-2">Date / Stage Name</th>
+                              <th className="p-2 w-36">Number of Defects</th>
+                              <th className="p-2 text-right w-12">Action</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100">
+                            {initialDefectTrendData.map((row, idx) => (
+                              <tr key={idx} className="hover:bg-slate-50/80">
+                                <td className="p-2 font-bold text-slate-400">{idx + 1}</td>
+                                <td className="p-2">
+                                  <input
+                                    type="text"
+                                    value={row.date}
+                                    onChange={(e) => handleUpdateInitialDefectRow(idx, 'date', e.target.value)}
+                                    placeholder="e.g. 13-12-2027"
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-xs font-semibold text-slate-800"
+                                  />
+                                </td>
+                                <td className="p-2">
+                                  <input
+                                    type="number"
+                                    step="0.1"
+                                    value={row.defectsCount}
+                                    onChange={(e) => handleUpdateInitialDefectRow(idx, 'defectsCount', parseFloat(e.target.value) || 0)}
+                                    className="w-28 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-xs font-bold text-emerald-700"
+                                  />
+                                </td>
+                                <td className="p-2 text-right">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveInitialDefectRow(idx)}
+                                    className="text-slate-300 hover:text-rose-600 p-1 transition"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {/* GENERATED GRAPH FOR STEP 1.1 */}
+                      <div className="mt-4 pt-3 border-t border-slate-200 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-black uppercase text-slate-700 font-mono tracking-wider flex items-center space-x-1">
+                            <TrendingDown className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>Initial Defect Baseline Chart (Generated Graph)</span>
+                          </span>
+                          <span className="text-[9px] font-mono text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                            Real-time Plot ({initialDefectTrendData.length} stages)
+                          </span>
+                        </div>
+
+                        <div className="bg-slate-50/50 p-4 rounded-xl border border-slate-200">
+                          <ResponsiveContainer width="100%" height={220}>
+                            <LineChart data={initialDefectTrendData.map(d => ({ name: d.date, defects: d.defectsCount }))}>
+                              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                              <XAxis dataKey="name" stroke="#64748b" fontSize={10} tickLine={false} />
+                              <YAxis stroke="#64748b" fontSize={10} tickLine={false} />
+                              <Tooltip 
+                                contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '8px', color: '#fff', fontSize: '11px' }}
+                                formatter={(val: any) => [`${val} Defects`, 'Defects']}
+                              />
+                              <Line 
+                                type="monotone" 
+                                dataKey="defects" 
+                                stroke="#059669" 
+                                strokeWidth={3} 
+                                dot={{ r: 6, fill: '#059669', stroke: '#ffffff', strokeWidth: 2 }}
+                                activeDot={{ r: 8, fill: '#10b981' }}
+                              />
+                            </LineChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* OPTION 2: PHOTO UPLOAD FOR INITIAL EVIDENCE */}
+                  {(initialEvidenceType === 'photo' || initialEvidenceType === 'both') && (
+                    <div className="space-y-4 bg-white p-4 rounded-xl border border-slate-200 shadow-3xs animate-fade-in">
+                      <h5 className="text-xs font-bold text-slate-800 font-mono uppercase flex items-center space-x-1.5">
+                        <Camera className="w-4 h-4 text-indigo-600" />
+                        <span>Option 2: Initial Defect Photo Upload</span>
+                      </h5>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                          <label className="block text-[10px] font-bold text-slate-500 uppercase font-mono">Upload Image File</label>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                const reader = new FileReader();
+                                reader.onloadend = () => setSketchPhoto(reader.result as string);
+                                reader.readAsDataURL(file);
+                              }
+                            }}
+                            className="hidden"
+                            id="photo-upload-step1"
+                          />
+                          <label
+                            htmlFor="photo-upload-step1"
+                            className="w-full bg-slate-50 hover:bg-slate-100 border border-dashed border-slate-300 rounded-xl px-4 py-3 flex items-center justify-center space-x-2 cursor-pointer transition text-xs font-bold text-indigo-600 font-mono"
+                          >
+                            <Upload className="w-4 h-4 text-indigo-500" />
+                            <span>Choose Defect Photo File</span>
+                          </label>
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="block text-[10px] font-bold text-slate-500 uppercase font-mono">Or Visual Image URL</label>
+                          <input
+                            type="text"
+                            value={sketchPhoto}
+                            onChange={(e) => setSketchPhoto(e.target.value)}
+                            placeholder="Paste visual image URL..."
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs"
+                          />
+                        </div>
+                      </div>
+
+                      {sketchPhoto && (
+                        <div className="mt-3 flex items-center space-x-3 pt-3 border-t border-slate-100">
+                          <img src={sketchPhoto} alt="Initial Defect Evidence" className="w-20 h-20 object-cover rounded-lg border border-slate-200" />
+                          <div>
+                            <span className="text-[10px] font-black uppercase text-indigo-600 font-mono block">INITIAL PHOTO ATTACHED</span>
+                            <button
+                              type="button"
+                              onClick={() => setSketchPhoto('')}
+                              className="text-[10px] font-mono text-rose-600 hover:underline font-bold"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <div>
@@ -1385,78 +1697,162 @@ export default function PpsrSystem({
             </div>
           )}
 
-          {/* STEP 3: ISHIKAWA & 5-WHYS */}
+          {/* STEP 3: CAUSE LOCALIZATION (FISHBONE & PSQ) & 5-WHYS */}
           {formStep === 3 && (
             <div className="space-y-6 animate-fade-in">
-              {/* Step 3.1: Ishikawa */}
-              <div className="bg-slate-50/50 p-6 rounded-2xl border border-slate-100 space-y-4">
-                <h4 className="text-xs font-black text-violet-600 uppercase tracking-widest font-mono border-b pb-2 flex items-center gap-1.5">
-                  <span>📐 Step 3.1: Ishikawa Localization categories (Separate causes by commas)</span>
-                </h4>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                  <div className="bg-white p-3 rounded-xl border border-slate-200 space-y-1">
-                    <label className="block text-[9px] font-black uppercase text-indigo-600 font-mono">👷 MAN (People)</label>
-                    <textarea 
-                      value={ishikawaMan} 
-                      onChange={(e) => setIshikawaMan(e.target.value)} 
-                      placeholder="e.g. Operator fatigue, lack of spray SOP check, rushing" 
-                      rows={2} 
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2 py-1 text-xs focus:bg-white" 
-                    />
+              {/* Step 3.0: Methodology Selection */}
+              <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b pb-3">
+                  <div>
+                    <h4 className="text-xs font-black text-violet-700 uppercase tracking-widest font-mono flex items-center gap-2">
+                      <span>🎯 Step 3.1: Cause Localization Methodology Selection</span>
+                    </h4>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Choose between the classical <strong>Ishikawa (6M) Fishbone</strong> or the structured <strong>PSQ (Problem Solving Question) Project Definition Elimination Tree</strong> to isolate the Big X.
+                    </p>
                   </div>
-                  <div className="bg-white p-3 rounded-xl border border-slate-200 space-y-1">
-                    <label className="block text-[9px] font-black uppercase text-emerald-600 font-mono">⚙️ MACHINE (Hardware)</label>
-                    <textarea 
-                      value={ishikawaMachine} 
-                      onChange={(e) => setIshikawaMachine(e.target.value)} 
-                      placeholder="e.g. Ruptured pre-filter box, spray gun residue" 
-                      rows={2} 
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2 py-1 text-xs focus:bg-white" 
-                    />
-                  </div>
-                  <div className="bg-white p-3 rounded-xl border border-slate-200 space-y-1">
-                    <label className="block text-[9px] font-black uppercase text-amber-600 font-mono">📦 MATERIAL (Stock)</label>
-                    <textarea 
-                      value={ishikawaMaterial} 
-                      onChange={(e) => setIshikawaMaterial(e.target.value)} 
-                      placeholder="e.g. High static doors attracting dust particles" 
-                      rows={2} 
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2 py-1 text-xs focus:bg-white" 
-                    />
-                  </div>
-                  <div className="bg-white p-3 rounded-xl border border-slate-200 space-y-1">
-                    <label className="block text-[9px] font-black uppercase text-violet-600 font-mono">📋 METHODS (SOPs)</label>
-                    <textarea 
-                      value={ishikawaMethods} 
-                      onChange={(e) => setIshikawaMethods(e.target.value)} 
-                      placeholder="e.g. PMC maintenance schedule skipped, no checklist" 
-                      rows={2} 
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2 py-1 text-xs focus:bg-white" 
-                    />
-                  </div>
-                  <div className="bg-white p-3 rounded-xl border border-slate-200 space-y-1">
-                    <label className="block text-[9px] font-black uppercase text-rose-600 font-mono">🌍 MILIEU (Environment)</label>
-                    <textarea 
-                      value={ishikawaMilieu} 
-                      onChange={(e) => setIshikawaMilieu(e.target.value)} 
-                      placeholder="e.g. Ambient draft in paint zone, static charge levels" 
-                      rows={2} 
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2 py-1 text-xs focus:bg-white" 
-                    />
-                  </div>
-                  <div className="bg-white p-3 rounded-xl border border-slate-200 space-y-1">
-                    <label className="block text-[9px] font-black uppercase text-cyan-600 font-mono">📏 MEASUREMENT</label>
-                    <textarea 
-                      value={ishikawaMeasurement} 
-                      onChange={(e) => setIshikawaMeasurement(e.target.value)} 
-                      placeholder="e.g. Visual inspection only, missing automated scanner" 
-                      rows={2} 
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2 py-1 text-xs focus:bg-white" 
-                    />
+
+                  {/* Approach Switcher */}
+                  <div className="flex items-center space-x-1.5 bg-slate-100 p-1 rounded-xl">
+                    <button
+                      type="button"
+                      onClick={() => setCauseLocalizationApproach('fishbone')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition cursor-pointer ${
+                        causeLocalizationApproach === 'fishbone'
+                          ? 'bg-violet-600 text-white shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      🐟 Ishikawa (6M)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCauseLocalizationApproach('psq')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition cursor-pointer ${
+                        causeLocalizationApproach === 'psq'
+                          ? 'bg-violet-600 text-white shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      🌳 PSQ Elimination Tree
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCauseLocalizationApproach('both')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition cursor-pointer ${
+                        causeLocalizationApproach === 'both'
+                          ? 'bg-violet-600 text-white shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      🔄 Both Approaches
+                    </button>
                   </div>
                 </div>
+
+                {/* PSQ Tree Editor */}
+                {(causeLocalizationApproach === 'psq' || causeLocalizationApproach === 'both') && (
+                  <div className="pt-2">
+                    <div className="mb-3 flex items-center justify-between">
+                      <h5 className="text-[11px] font-black uppercase tracking-wider text-emerald-800 font-mono flex items-center gap-2">
+                        <span>🌳 PSQ Project Definition & Elimination Strategy Tree (Interactive Editor)</span>
+                      </h5>
+                      <span className="text-[10px] text-slate-500 font-mono">
+                        Click on node status badges to cycle [Active → Eliminated ❌ → Target Big X 🎯]
+                      </span>
+                    </div>
+
+                    <PsqEliminationTree 
+                      data={psqTreeData}
+                      onChange={setPsqTreeData}
+                      isEditable={true}
+                      contextInfo={{
+                        title,
+                        description: problemStatement,
+                        area: plant,
+                        line: lineStation,
+                        station: lineStation,
+                        partName: productComponent,
+                        partNo: productComponent,
+                        rejectionRate: amountDefects,
+                        scrapCost: '2500 €'
+                      }}
+                    />
+                  </div>
+                )}
               </div>
+
+              {/* Step 3.1: Ishikawa */}
+              {(causeLocalizationApproach === 'fishbone' || causeLocalizationApproach === 'both') && (
+                <div className="bg-slate-50/50 p-6 rounded-2xl border border-slate-100 space-y-4">
+                  <h4 className="text-xs font-black text-violet-600 uppercase tracking-widest font-mono border-b pb-2 flex items-center gap-1.5">
+                    <span>📐 Step 3.1: Ishikawa 6M Localization categories (Separate causes by commas)</span>
+                  </h4>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                    <div className="bg-white p-3 rounded-xl border border-slate-200 space-y-1">
+                      <label className="block text-[9px] font-black uppercase text-indigo-600 font-mono">👷 MAN (People)</label>
+                      <textarea 
+                        value={ishikawaMan} 
+                        onChange={(e) => setIshikawaMan(e.target.value)} 
+                        placeholder="e.g. Operator fatigue, lack of spray SOP check, rushing" 
+                        rows={2} 
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2 py-1 text-xs focus:bg-white" 
+                      />
+                    </div>
+                    <div className="bg-white p-3 rounded-xl border border-slate-200 space-y-1">
+                      <label className="block text-[9px] font-black uppercase text-emerald-600 font-mono">⚙️ MACHINE (Hardware)</label>
+                      <textarea 
+                        value={ishikawaMachine} 
+                        onChange={(e) => setIshikawaMachine(e.target.value)} 
+                        placeholder="e.g. Ruptured pre-filter box, spray gun residue" 
+                        rows={2} 
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2 py-1 text-xs focus:bg-white" 
+                      />
+                    </div>
+                    <div className="bg-white p-3 rounded-xl border border-slate-200 space-y-1">
+                      <label className="block text-[9px] font-black uppercase text-amber-600 font-mono">📦 MATERIAL (Stock)</label>
+                      <textarea 
+                        value={ishikawaMaterial} 
+                        onChange={(e) => setIshikawaMaterial(e.target.value)} 
+                        placeholder="e.g. High static doors attracting dust particles" 
+                        rows={2} 
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2 py-1 text-xs focus:bg-white" 
+                      />
+                    </div>
+                    <div className="bg-white p-3 rounded-xl border border-slate-200 space-y-1">
+                      <label className="block text-[9px] font-black uppercase text-violet-600 font-mono">📋 METHODS (SOPs)</label>
+                      <textarea 
+                        value={ishikawaMethods} 
+                        onChange={(e) => setIshikawaMethods(e.target.value)} 
+                        placeholder="e.g. PMC maintenance schedule skipped, no checklist" 
+                        rows={2} 
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2 py-1 text-xs focus:bg-white" 
+                      />
+                    </div>
+                    <div className="bg-white p-3 rounded-xl border border-slate-200 space-y-1">
+                      <label className="block text-[9px] font-black uppercase text-rose-600 font-mono">🌍 MILIEU (Environment)</label>
+                      <textarea 
+                        value={ishikawaMilieu} 
+                        onChange={(e) => setIshikawaMilieu(e.target.value)} 
+                        placeholder="e.g. Ambient draft in paint zone, static charge levels" 
+                        rows={2} 
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2 py-1 text-xs focus:bg-white" 
+                      />
+                    </div>
+                    <div className="bg-white p-3 rounded-xl border border-slate-200 space-y-1">
+                      <label className="block text-[9px] font-black uppercase text-cyan-600 font-mono">📏 MEASUREMENT</label>
+                      <textarea 
+                        value={ishikawaMeasurement} 
+                        onChange={(e) => setIshikawaMeasurement(e.target.value)} 
+                        placeholder="e.g. Visual inspection only, missing automated scanner" 
+                        rows={2} 
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2 py-1 text-xs focus:bg-white" 
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Step 3.2: 5-Whys Flow */}
               <div className="bg-slate-50/50 p-6 rounded-2xl border border-slate-100 space-y-4">
@@ -1601,21 +1997,227 @@ export default function PpsrSystem({
                 </div>
               </div>
 
-              {/* Step 4.2: Evidence of Effectiveness */}
-              <div className="bg-slate-50/50 p-6 rounded-2xl border border-slate-100 space-y-4">
-                <h4 className="text-xs font-black text-violet-600 uppercase tracking-widest font-mono border-b pb-2 flex items-center gap-1.5">
-                  <span>📊 Step 4.2: Evidence of effectiveness (Defect level changes)</span>
-                </h4>
+              {/* Step 4.2: Evidence of Effectiveness (Two Options: Data Graph vs Photo Upload) */}
+              <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-3">
+                  <div>
+                    <h4 className="text-xs font-black text-slate-800 uppercase tracking-widest font-mono flex items-center gap-1.5">
+                      <span>📊 Step 4.2: Evidence & Verification Options</span>
+                    </h4>
+                    <p className="text-[10px] text-slate-500 mt-0.5 font-mono">
+                      Choose between entering defect reduction data (generates trend graph) or uploading photo evidence.
+                    </p>
+                  </div>
+
+                  {/* TWO OPTION TOGGLE */}
+                  <div className="flex bg-white p-1 rounded-xl border border-slate-200 shadow-3xs font-mono text-[10px] font-bold">
+                    <button
+                      type="button"
+                      onClick={() => setEvidenceType('data')}
+                      className={`px-3 py-1.5 rounded-lg transition flex items-center space-x-1.5 ${
+                        evidenceType === 'data'
+                          ? 'bg-emerald-600 text-white shadow-xs font-black'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      <TrendingDown className="w-3.5 h-3.5" />
+                      <span>Option 1: Data (Date & Defects)</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setEvidenceType('photo')}
+                      className={`px-3 py-1.5 rounded-lg transition flex items-center space-x-1.5 ${
+                        evidenceType === 'photo'
+                          ? 'bg-indigo-600 text-white shadow-xs font-black'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      <Camera className="w-3.5 h-3.5" />
+                      <span>Option 2: Photo Upload</span>
+                    </button>
+                  </div>
+                </div>
+
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase font-mono mb-1">Effectiveness Statement</label>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase font-mono mb-1">Effectiveness Summary Statement</label>
                   <textarea
                     value={effectivenessEvidence}
                     onChange={(e) => setEffectivenessEvidence(e.target.value)}
-                    rows={3}
-                    placeholder="Describe post-implementation defects levels (e.g., Defect rate dropped from 8% to 0.2% after HEPA filter switch, verified over 3 production runs)..."
+                    rows={2}
+                    placeholder="Describe post-implementation defect reduction (e.g., Defect count dropped from 6.2 to 0.1 after PLC cycle tune)..."
                     className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs focus:bg-white focus:outline-none text-slate-800"
                   />
                 </div>
+
+                {/* OPTION 1: DATA ENTRY FOR DEFECT REDUCTION TREND CHART */}
+                {(evidenceType === 'data' || evidenceType === 'both') && (
+                  <div className="space-y-4 bg-white p-4 rounded-xl border border-slate-200 shadow-3xs animate-fade-in">
+                    <div className="flex items-center justify-between border-b pb-2">
+                      <div>
+                        <span className="text-[10px] font-black uppercase text-emerald-700 font-mono tracking-wider flex items-center space-x-1">
+                          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                          <span>Option 1: Defect Trend Data Input</span>
+                        </span>
+                        <p className="text-[10px] text-slate-500 mt-0.5">Input dates/days and defect counts. The trend graph below updates automatically.</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleAddDefectRow}
+                        className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs px-2.5 py-1.5 rounded-lg font-bold font-mono transition border border-emerald-200 flex items-center space-x-1"
+                      >
+                        <span>+ Add Data Point</span>
+                      </button>
+                    </div>
+
+                    {/* Table of Date & Defect Count */}
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs font-mono">
+                        <thead>
+                          <tr className="bg-slate-50 text-slate-500 border-b border-slate-200">
+                            <th className="p-2 w-8">#</th>
+                            <th className="p-2">Date / Stage Name</th>
+                            <th className="p-2 w-36">Number of Defects</th>
+                            <th className="p-2 text-right w-12">Action</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {defectTrendData.map((row, idx) => (
+                            <tr key={idx} className="hover:bg-slate-50/80">
+                              <td className="p-2 font-bold text-slate-400">{idx + 1}</td>
+                              <td className="p-2">
+                                <input
+                                  type="text"
+                                  value={row.date}
+                                  onChange={(e) => handleUpdateDefectRow(idx, 'date', e.target.value)}
+                                  placeholder="e.g. Day 1 (Initial)"
+                                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-xs font-semibold text-slate-800"
+                                />
+                              </td>
+                              <td className="p-2">
+                                <input
+                                  type="number"
+                                  step="0.1"
+                                  value={row.defectsCount}
+                                  onChange={(e) => handleUpdateDefectRow(idx, 'defectsCount', parseFloat(e.target.value) || 0)}
+                                  className="w-28 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-xs font-bold text-emerald-700"
+                                />
+                              </td>
+                              <td className="p-2 text-right">
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveDefectRow(idx)}
+                                  className="text-slate-300 hover:text-rose-600 p-1 transition"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* GENERATED GRAPH (DEFECT REDUCTION TREND CHART - IMAGE 3) */}
+                    <div className="mt-4 pt-3 border-t border-slate-200 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-black uppercase text-slate-700 font-mono tracking-wider flex items-center space-x-1">
+                          <TrendingDown className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>Defect Reduction Trend Chart (Generated Graph)</span>
+                        </span>
+                        <span className="text-[9px] font-mono text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                          Real-time Plot ({defectTrendData.length} stages)
+                        </span>
+                      </div>
+
+                      <div className="bg-slate-50/50 p-4 rounded-xl border border-slate-200">
+                        <ResponsiveContainer width="100%" height={220}>
+                          <LineChart data={defectTrendData.map(d => ({ name: d.date, defects: d.defectsCount }))}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                            <XAxis dataKey="name" stroke="#64748b" fontSize={10} tickLine={false} />
+                            <YAxis stroke="#64748b" fontSize={10} tickLine={false} />
+                            <Tooltip 
+                              contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '8px', color: '#fff', fontSize: '11px' }}
+                              formatter={(val: any) => [`${val} Defects`, 'Defects']}
+                            />
+                            <Line 
+                              type="monotone" 
+                              dataKey="defects" 
+                              stroke="#059669" 
+                              strokeWidth={3} 
+                              dot={{ r: 6, fill: '#059669', stroke: '#ffffff', strokeWidth: 2 }}
+                              activeDot={{ r: 8, fill: '#10b981' }}
+                            />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* OPTION 2: PHOTO UPLOAD */}
+                {(evidenceType === 'photo' || evidenceType === 'both') && (
+                  <div className="space-y-4 bg-white p-4 rounded-xl border border-slate-200 shadow-3xs animate-fade-in">
+                    <h5 className="text-xs font-bold text-slate-800 font-mono uppercase flex items-center space-x-1.5">
+                      <Camera className="w-4 h-4 text-indigo-600" />
+                      <span>Option 2: Photo Upload & Visual Evidence</span>
+                    </h5>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase font-mono">Upload Image File</label>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              const reader = new FileReader();
+                              reader.onloadend = () => setSketchPhoto(reader.result as string);
+                              reader.readAsDataURL(file);
+                            }
+                          }}
+                          className="hidden"
+                          id="photo-upload-step4"
+                        />
+                        <label
+                          htmlFor="photo-upload-step4"
+                          className="w-full bg-slate-50 hover:bg-slate-100 border border-dashed border-slate-300 rounded-xl px-4 py-3 flex items-center justify-center space-x-2 cursor-pointer transition text-xs font-bold text-indigo-600 font-mono"
+                        >
+                          <Upload className="w-4 h-4 text-indigo-500" />
+                          <span>Choose Photo File</span>
+                        </label>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase font-mono">Or Visual Image URL</label>
+                        <input
+                          type="text"
+                          value={sketchPhoto}
+                          onChange={(e) => setSketchPhoto(e.target.value)}
+                          placeholder="Paste image URL..."
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs"
+                        />
+                      </div>
+                    </div>
+
+                    {sketchPhoto && (
+                      <div className="mt-3 flex items-center space-x-3 pt-3 border-t border-slate-100">
+                        <img src={sketchPhoto} alt="Evidence" className="w-20 h-20 object-cover rounded-lg border border-slate-200" />
+                        <div>
+                          <span className="text-[10px] font-black uppercase text-emerald-600 font-mono block">PHOTO ATTACHED</span>
+                          <button
+                            type="button"
+                            onClick={() => setSketchPhoto('')}
+                            className="text-[10px] font-mono text-rose-600 hover:underline font-bold"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           )}

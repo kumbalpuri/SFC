@@ -6,11 +6,12 @@ import KaizenSpreadsheet from '../components/KaizenSpreadsheet';
 import CftMonthlyAwards from '../components/CftMonthlyAwards';
 import OpenImpactTracker from '../components/OpenImpactTracker';
 import KaizenProcessFlowchart from '../components/KaizenProcessFlowchart';
+import KaizenGamificationAnalytics from '../components/KaizenGamificationAnalytics';
 import { Kaizen, PpsrReport, OpenImpactAction, UserPersona } from '../types';
 
 interface KaizenModuleProps {
-  activeTab: 'dashboard' | 'form' | 'committee' | 'list' | 'cft-awards' | 'impact-tracker' | 'process-flowchart';
-  setActiveTab: (tab: 'dashboard' | 'form' | 'committee' | 'list' | 'cft-awards' | 'impact-tracker' | 'process-flowchart') => void;
+  activeTab: 'dashboard' | 'form' | 'committee' | 'list' | 'cft-awards' | 'impact-tracker' | 'process-flowchart' | 'gamification';
+  setActiveTab: (tab: 'dashboard' | 'form' | 'committee' | 'list' | 'cft-awards' | 'impact-tracker' | 'process-flowchart' | 'gamification') => void;
   kaizens: Kaizen[];
   ppsrReports: PpsrReport[];
   impactActions: OpenImpactAction[];
@@ -50,6 +51,14 @@ export default function KaizenModule({
             else if (tab === 'committee') handleSetPersona('committee');
             else setActiveTab(tab as any);
           }}
+        />
+      )}
+
+      {activeTab === 'gamification' && (
+        <KaizenGamificationAnalytics
+          kaizens={kaizens}
+          onSelectKaizen={onSelectKaizen}
+          onNavigateToTab={(tab) => setActiveTab(tab as any)}
         />
       )}
 
